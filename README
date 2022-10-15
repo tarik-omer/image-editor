@@ -1,0 +1,90 @@
+Copyright 2021-2022 Omer Tarik Ilhan 314CA
+
+	This simple image editor starts by entering a loop, which is only
+broken by the EXIT command. Whenever a valid command is introduced,
+a corresponding function is called, either waiting for further
+command parameters or executing right away.
+
+	Every command has both an effect on the image (except SELECT, which
+affects further commands) and a stdout output, meaning that the
+task is complete.
+
+	Firstly, I shall explain the main construction foundation on which
+the image editor is built: the "img" data structure. It contains every
+needed information about the currently loaded image: type, width, height,
+max value and the corresponding pixel-map. When a grayscale image is loaded,
+only the GS double pointer is used to hold the pixel-map and when an RGB
+image is loaded, the R, G and B pointers are used to hold their respective
+color matrix. The col and format variables are both based on the image type
+(explained when first used), and is_loaded represents whether an image is
+currently loaded or not.
+
+	I will now explain every command and the steps that are followed in order
+to accomplish the desired task.
+
+LOAD:
+	The first and most important command is, of course, LOAD.
+The command's parameter represents the relative path to the file in need
+of "loading". It checks whether the file can be opened. If so, the header
+is read, which contains the needed information in order to start reading
+the pixel-map matrix. According to the image type, a specific function
+that allocates and reads the matrix / matrices
+is called (ascii / binary, grayscale / RGB).
+
+EXIT:
+	The exit command is simple. When the corresponding function
+is called, all allocated memory is freed. Then, the loop is broken.
+
+SELECT:
+	When called, the given parameters are validated, then they are memorised
+in the struct's coordinates. Valid parameters are either "ALL", which selects
+the whole image, or 4 integers that are within the dimensions of the image,
+which represent 2 points on a 2-axis coordinate system, with the origin in
+the top-left corner of the image.
+
+CROP:
+	The logic behind the crop function is simple. Allocate 1-3 matrices
+depending on the image type, with the dimension the same as the selection,
+then fill those matrices with values from the main matrix / matrices,
+which are within the selection. Free the memory occupied by the old
+matrix and memorise the new matrix to the according struct matrices.
+The new image dimension are the selection dimensions (height is y2 - y1
+and width is x2 - x1).
+
+ROTATE:
+	One of the most difficult commands to complete. Depending on the image
+type and the current selection, matrices are allocated. When the selection
+is the whole image, a new matrix with the same sizes is allocated, but
+they can also be inverted (if the selection is +/-90, +/-270). If the
+selection is a square from within the image, the a smaller, square matrix
+is allocated with the size of the selection. All values from withing the main
+matrix are copied to the new auxiliary in such a way that it is rotated
+to the angle given as a parameter. If the whole image is selected, the old
+matrix is freed and then replaces by a pointer to the new, rotated matrix.
+If there is only a part of the image selected, then rotated values are copied
+back to the main matrix, in place, then the auxiliary matrix is freed.
+
+APPLY:
+	The apply function was not very difficult to create, but rather difficult
+to correct small details, mostly regarding aproximation. Depending on the
+command parameter (SHARPEN, EDGE, BLUR, GAUSSIAN BLUR), the corresponding
+filter is applied on the selected portion of the pixel-map. First, we create
+the 3 x 3 kernel matrix necessary for the mentioned filter. Then, we use
+the apply_kernel() function to generate one pixel at a time, based on
+itself and the other 8 pixels around it. Multiplying those 9 values with
+the corresponding kernel values gives us the wanted pixel. We use the
+apply_kernel_on_matrix() and apply_kernel_on_matrix_div() functions to
+get the selection of pixels calculated and copy them to newly allocated
+matrices, based on the original image. Finally, we use the apply_filter()
+function to copy the filtered pixels on the main image, before freeing
+the auxiliary matrices.
+
+SAVE:
+	The save command takes as a parameter the path to the desired saving
+location and name. An optional parameter is the "ascii" string. Based on
+the image type and whether the ascii parameter is present or not, a file
+with the mentioned name is created, filled with the image header (type,
+width, height, max value), then the pixel-map is written either in ascii
+or in binary.
+
+	I hope that I was thorough enough :)
